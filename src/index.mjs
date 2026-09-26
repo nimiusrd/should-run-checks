@@ -2,6 +2,7 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { evaluateChanges } from './scope.mjs';
+import { loadConfig } from './config.mjs';
 
 function writeResult(result, env) {
   const output = `run_checks=${result.runChecks}\nreason=${result.reason}\n`;
@@ -20,7 +21,7 @@ export function run(env = process.env) {
   try {
     const workspace = resolve(env.GITHUB_WORKSPACE || process.cwd());
     const configPath = resolve(workspace, env['INPUT_CONFIG-PATH'] || '.github/ci-skip-rules.json');
-    const config = JSON.parse(readFileSync(configPath, 'utf8'));
+    const config = loadConfig(configPath);
     const event = JSON.parse(readFileSync(env.GITHUB_EVENT_PATH, 'utf8'));
     const result = evaluateChanges({ workspace, config, eventName: env.GITHUB_EVENT_NAME, event });
     writeResult(result, env);

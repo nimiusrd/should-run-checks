@@ -4,7 +4,7 @@ const KEYS = ['skipExtensions', 'skipDirectories', 'alwaysRunFiles'];
 
 export function validateConfig(config) {
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
-    throw new Error('設定はJSONオブジェクトで指定してください。');
+    throw new Error('設定はキーと値のマッピングで指定してください。');
   }
   for (const key of Object.keys(config)) {
     if (!KEYS.includes(key)) throw new Error(`未知の設定キー: ${key}`);

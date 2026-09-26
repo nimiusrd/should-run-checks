@@ -1,9 +1,9 @@
 {
   "name": "should-run-checks",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "変更パスとJSONルールでCIのスキップを判定するGitHub Action",
+  "description": "変更パスとYAML・JSONルールでCIのスキップを判定するGitHub Action",
   "license": "MIT",
   "engines": {
     "node": ">=24"
@@ -12,12 +12,17 @@
     "test": "node --test",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "build": "node scripts/build.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "esbuild": "0.28.2",
     "eslint": "10.5.0",
     "globals": "17.6.0",
     "prettier": "3.8.4"
+  },
+  "dependencies": {
+    "yaml": "2.9.1"
   }
 }

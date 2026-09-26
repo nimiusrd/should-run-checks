@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -181,30 +190,37 @@ test('不足したSHAや取得していない履歴は失敗にする', () => {
   assert.throws(() => evaluate(repo, 'f'.repeat(40)));
 });
 
-function runAction(repo, event, customConfig = config, configPath = '.github/ci-skip-rules.json') {
+function runAction(
+  repo,
+  event,
+  customConfig = config,
+  configPath = '.github/ci-skip-rules.json',
+  entry = fileURLToPath(new URL('../src/index.mjs', import.meta.url)),
+) {
   const files = tempDirectory();
   const eventPath = join(files, 'event.json');
   const output = join(files, 'output');
   const summary = join(files, 'summary');
   writeFileSync(eventPath, JSON.stringify(event));
-  if (customConfig !== null) repo.write(configPath, JSON.stringify(customConfig));
-  const result = spawnSync(
-    process.execPath,
-    [fileURLToPath(new URL('../src/index.mjs', import.meta.url))],
-    {
-      cwd: files,
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        GITHUB_WORKSPACE: repo.workspace,
-        GITHUB_EVENT_NAME: 'push',
-        GITHUB_EVENT_PATH: eventPath,
-        GITHUB_OUTPUT: output,
-        GITHUB_STEP_SUMMARY: summary,
-        'INPUT_CONFIG-PATH': configPath,
-      },
+  if (customConfig !== null)
+    repo.write(
+      configPath,
+      typeof customConfig === 'string' ? customConfig : JSON.stringify(customConfig),
+    );
+  const result = spawnSync(process.execPath, [entry], {
+    cwd: files,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      GITHUB_WORKSPACE: repo.workspace,
+      GITHUB_EVENT_NAME: 'push',
+      GITHUB_EVENT_PATH: eventPath,
+      GITHUB_OUTPUT: output,
+      GITHUB_STEP_SUMMARY: summary,
+      'INPUT_CONFIG-PATH': configPath,
     },
-  );
+  });
+  assert.ok(existsSync(output), result.stderr || 'Actionの出力ファイルがありません');
   return {
     ...result,
     output: readFileSync(output, 'utf8'),
@@ -236,3 +252,35 @@ test('Actionの判定失敗は非ゼロ終了とtrue出力になる', () => {
     assert.equal(result.output, 'run_checks=true\nreason=error\n');
   }
 });
+
+for (const entryKind of ['source', 'bundle']) {
+  for (const extension of ['yml', 'yaml']) {
+    test(`${entryKind}: ${extension}設定をActionの入出力まで検証する`, () => {
+      const repo = repository();
+      repo.write('docs/example.md');
+      const event = { before: repo.base, after: repo.commit() };
+      let entry = fileURLToPath(new URL('../src/index.mjs', import.meta.url));
+      if (entryKind === 'bundle') {
+        entry = join(tempDirectory(), 'action.mjs');
+        copyFileSync(new URL('../dist/index.mjs', import.meta.url), entry);
+      }
+      const rules = 'skipExtensions: [.md] # comment\nskipDirectories: []\nalwaysRunFiles: []\n';
+      const result = runAction(repo, event, rules, `config.${extension}`, entry);
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(result.output, 'run_checks=false\nreason=skip-only\n');
+      const invalid = runAction(
+        repo,
+        event,
+        rules + 'skipExtensions: []\n',
+        `config.${extension}`,
+        entry,
+      );
+      assert.notEqual(invalid.status, 0);
+      assert.equal(invalid.output, 'run_checks=true\nreason=error\n');
+      const exception = rules.replace('alwaysRunFiles: []', 'alwaysRunFiles: [docs/example.md]');
+      const required = runAction(repo, event, exception, `config.${extension}`, entry);
+      assert.equal(required.status, 0, required.stderr);
+      assert.equal(required.output, 'run_checks=true\nreason=changed-files\n');
+    });
+  }
+}

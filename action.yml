@@ -6,7 +6,7 @@ branding:
   color: blue
 inputs:
   config-path:
-    description: チェックアウトしたリポジトリを基準とするJSON設定ファイルのパス
+    description: チェックアウトしたリポジトリを基準とするYAMLまたはJSON設定ファイルのパス
     default: .github/ci-skip-rules.json
 outputs:
   run_checks:
@@ -15,4 +15,4 @@ outputs:
     description: 判定理由（changed-files、skip-only、no-changes、initial-push、unsupported-event、error）
 runs:
   using: node24
-  main: src/index.mjs
+  main: dist/index.mjs
