@@ -1,0 +1,6 @@
+{
+  "name": "ci-skip-rules-action",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:24-bookworm",
+  "remoteUser": "node",
+  "postCreateCommand": "npm ci --cache .npm-cache"
+}

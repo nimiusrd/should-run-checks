@@ -1,0 +1,18 @@
+name: CI Skip Rules
+description: 設定ファイルと変更パスから、CIのチェックを実行すべきか判定します。
+author: nimiusrd
+branding:
+  icon: filter
+  color: blue
+inputs:
+  config-path:
+    description: チェックアウトしたリポジトリを基準とするJSON設定ファイルのパス
+    default: .github/ci-skip-rules.json
+outputs:
+  run_checks:
+    description: チェックを実行する場合はtrue、省略できる場合はfalse
+  reason:
+    description: 判定理由（changed-files、skip-only、no-changes、initial-push、unsupported-event、error）
+runs:
+  using: node24
+  main: src/index.mjs

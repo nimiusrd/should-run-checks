@@ -1,0 +1,23 @@
+{
+  "name": "ci-skip-rules-action",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "変更パスとJSONルールでCIのスキップを判定するGitHub Action",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.5.0",
+    "globals": "17.6.0",
+    "prettier": "3.8.4"
+  }
+}
