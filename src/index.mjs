@@ -10,7 +10,7 @@ function writeResult(result, env) {
   if (env.GITHUB_STEP_SUMMARY) {
     appendFileSync(
       env.GITHUB_STEP_SUMMARY,
-      `## CI Skip Rules\n\n- チェックを実行: ${result.runChecks}\n- 判定理由: ${result.reason}\n` +
+      `## Should Run Checks\n\n- チェックを実行: ${result.runChecks}\n- 判定理由: ${result.reason}\n` +
         (result.changedFileCount === undefined ? '' : `- 変更パス数: ${result.changedFileCount}\n`),
     );
   }

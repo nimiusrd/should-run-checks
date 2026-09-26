@@ -1,4 +1,4 @@
-name: CI Skip Rules
+name: Should Run Checks
 description: 設定ファイルと変更パスから、CIのチェックを実行すべきか判定します。
 author: nimiusrd
 branding:

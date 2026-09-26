@@ -1,6 +1,6 @@
 {
-  "name": "ci-skip-rules-action",
-  "version": "0.1.0",
+  "name": "should-run-checks",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "変更パスとJSONルールでCIのスキップを判定するGitHub Action",

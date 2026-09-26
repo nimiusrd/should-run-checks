@@ -1,4 +1,4 @@
-# CI Skip Rules Action
+# Should Run Checks
 
 変更されたファイルとJSONのスキップルールを照合し、CIのチェックを実行する必要があるか判定するGitHub Actionです。
 ドキュメントだけの変更ではテストを省略し、コードを含む変更では実行する、といった設定を利用側で管理できます。
@@ -46,7 +46,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
       # 本番では、リリースタグが指す40桁のコミットSHAに固定してください。
-      - uses: nimiusrd/ci-skip-rules-action@v0.1.0
+      - uses: nimiusrd/should-run-checks@v0.1.1
         id: scope
         with:
           config-path: .github/ci-skip-rules.json

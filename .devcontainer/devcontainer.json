@@ -1,5 +1,5 @@
 {
-  "name": "ci-skip-rules-action",
+  "name": "should-run-checks",
   "image": "mcr.microsoft.com/devcontainers/typescript-node:24-bookworm",
   "remoteUser": "node",
   "postCreateCommand": "npm ci --cache .npm-cache"
