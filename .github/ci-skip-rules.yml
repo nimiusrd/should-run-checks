@@ -1,5 +1,0 @@
-# Markdownだけの変更はテストを省略できる
-skipExtensions:
-  - .md
-skipDirectories: []
-alwaysRunFiles: []

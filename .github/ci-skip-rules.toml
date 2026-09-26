@@ -1,0 +1,4 @@
+# Markdownだけの変更なら省略できる
+skipExtensions = [".md"]
+skipDirectories = []
+alwaysRunFiles = []

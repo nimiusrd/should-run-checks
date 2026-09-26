@@ -8,30 +8,52 @@ permissions:
   contents: read
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.11'
+          - os: ubuntu-latest
+            python: '3.13'
+          - os: macos-latest
+            python: '3.13'
+          - os: windows-latest
+            python: '3.13'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m unittest discover -s tests -v
+        env:
+          PYTHONUTF8: '1'
+      - run: python -m compileall -q should_run_checks.py tests
+      - run: git diff --check
+  action:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npm run build
-      - run: git diff --exit-code -- dist/
-      - run: npm run lint
-      - run: npm run format:check
-      - run: npm test
+      - name: Capture caller PATH
+        shell: bash
+        run: printf '%s' "$PATH" > "$RUNNER_TEMP/caller-path"
+      # 呼び出し元にPythonのセットアップやpip installを置かずに実行する。
       - uses: ./
         id: scope
-        with:
-          config-path: .github/ci-skip-rules.yml
       - name: Verify action outputs
+        shell: bash
         env:
           RUN_CHECKS: ${{ steps.scope.outputs.run_checks }}
           REASON: ${{ steps.scope.outputs.reason }}
         run: |
           test "$RUN_CHECKS" = true || test "$RUN_CHECKS" = false
           test -n "$REASON"
+          test "$PATH" = "$(cat "$RUNNER_TEMP/caller-path")"

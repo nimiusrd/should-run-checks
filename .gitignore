@@ -1,2 +1,6 @@
+__pycache__/
+*.pyc
+
+# 移行前のローカル開発キャッシュ
 node_modules/
 .npm-cache/

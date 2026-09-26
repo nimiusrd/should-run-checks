@@ -1,6 +1,5 @@
 {
   "name": "should-run-checks",
-  "image": "mcr.microsoft.com/devcontainers/typescript-node:24-bookworm",
-  "remoteUser": "node",
-  "postCreateCommand": "npm ci --cache .npm-cache"
+  "image": "mcr.microsoft.com/devcontainers/python:3.13-bookworm",
+  "remoteUser": "vscode"
 }

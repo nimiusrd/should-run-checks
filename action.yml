@@ -6,13 +6,28 @@ branding:
   color: blue
 inputs:
   config-path:
-    description: チェックアウトしたリポジトリを基準とするYAMLまたはJSON設定ファイルのパス
-    default: .github/ci-skip-rules.json
+    description: チェックアウトしたリポジトリを基準とするTOMLまたはJSON設定ファイルのパス
+    default: .github/ci-skip-rules.toml
 outputs:
   run_checks:
     description: チェックを実行する場合はtrue、省略できる場合はfalse
+    value: ${{ steps.scope.outputs.run_checks }}
   reason:
     description: 判定理由（changed-files、skip-only、no-changes、initial-push、unsupported-event、error）
+    value: ${{ steps.scope.outputs.reason }}
 runs:
-  using: node24
-  main: dist/index.mjs
+  using: composite
+  steps:
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      id: python
+      with:
+        python-version: '3.13'
+        update-environment: false
+    - id: scope
+      shell: bash
+      env:
+        SCOPE_PYTHON: ${{ steps.python.outputs.python-path }}
+        SCOPE_ACTION_PATH: ${{ github.action_path }}
+        SCOPE_CONFIG_PATH: ${{ inputs.config-path }}
+        PYTHONUTF8: '1'
+      run: '"$SCOPE_PYTHON" "$SCOPE_ACTION_PATH/should_run_checks.py"'
