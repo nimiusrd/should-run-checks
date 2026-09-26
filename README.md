@@ -5,6 +5,8 @@ Python標準ライブラリだけで実装し、TOMLを`tomllib`で読み込み�
 
 ## 使い方
 
+Actionのサポート対象はUbuntuランナーです。`runs-on: ubuntu-latest`の判定専用ジョブで実行し、後続のチェックにはジョブ出力を渡してください。後続のチェックはmacOS・Windowsでも実行できます。Action自体をmacOS・Windowsで実行する使い方はサポート対象外です。
+
 利用するリポジトリに`.github/ci-skip-rules.toml`を作成します。
 
 ```toml
@@ -69,7 +71,7 @@ devcontainer exec --workspace-folder . python -m unittest discover -s tests -v
 devcontainer exec --workspace-folder . python -m compileall -q should_run_checks.py tests
 ```
 
-Linux・macOS・Windowsでテストし、Pythonセットアップを呼び出し元に置かないActionの実行もCIで確認します。
+CIはUbuntuのPython 3.11・3.13の2ジョブでテストします。3.11は最低対応バージョン、3.13はActionで使うバージョンの確認用です。3.13のジョブでは、テスト用Pythonのセットアップ前にActionを実行し、有効な出力が得られることと呼び出し元のPATHが変わらないことも確認します。
 
 ### Codexアプリのローカル環境
 
