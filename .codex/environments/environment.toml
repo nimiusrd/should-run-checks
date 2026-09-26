@@ -1,0 +1,29 @@
+version = 1
+name = "should-run-checks"
+
+[setup]
+script = '''
+set -eu
+devcontainer up --workspace-folder .
+devcontainer exec --workspace-folder . python --version
+'''
+
+[[actions]]
+name = "コンテナ起動"
+icon = "tool"
+command = "devcontainer up --workspace-folder ."
+
+[[actions]]
+name = "テスト"
+icon = "test"
+command = "devcontainer exec --workspace-folder . python -m unittest discover -s tests -v"
+
+[[actions]]
+name = "提出前チェック"
+icon = "test"
+command = '''
+set -eu
+devcontainer exec --workspace-folder . python -m unittest discover -s tests -v
+devcontainer exec --workspace-folder . python -m compileall -q should_run_checks.py tests
+git diff --check
+'''

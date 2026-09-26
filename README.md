@@ -71,4 +71,25 @@ devcontainer exec --workspace-folder . python -m compileall -q should_run_checks
 
 Linux・macOS・Windowsでテストし、Pythonセットアップを呼び出し元に置かないActionの実行もCIで確認します。
 
+### Codexアプリのローカル環境
+
+ホストでDockerとDev Container CLIを利用できる状態にして、Dockerを起動してください。
+Codex用の設定は`.codex/environments/environment.toml`に保存しています。
+新しいworktreeのセットアップではDev Containerを起動し、Pythonのバージョンを確認します。
+既存のチェックアウトでは「コンテナ起動」アクションを実行してください。
+
+- 「テスト」: コンテナ内でユニットテストを実行します。
+- 「提出前チェック」: コンテナ内でユニットテストと構文チェックを順に実行し、ホストで`git diff --check`を確認します。失敗した場合はそこで停止します。
+
+プロジェクトの実行コマンドには`devcontainer exec --workspace-folder .`を使い、Git操作はホストで行います。
+設定方法の詳細は[Codexのローカル環境](https://learn.chatgpt.com/docs/environments/local-environment)を参照してください。
+
+テストが`No space left on device`で失敗した場合は、Dockerの空き容量を確認してください。
+一時的な検証には、コンテナの`/dev/shm`に空きがあれば次のコマンドを使えます。
+これはDockerのディスク容量不足そのものを解消するものではありません。
+
+```bash
+devcontainer exec --workspace-folder . env TMPDIR=/dev/shm python -m unittest discover -s tests -v
+```
+
 [MIT License](LICENSE)
