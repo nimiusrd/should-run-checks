@@ -1,5 +1,8 @@
 {
   "name": "should-run-checks",
-  "image": "mcr.microsoft.com/devcontainers/python:3.13-bookworm",
-  "remoteUser": "vscode"
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "vscode",
+  "postCreateCommand": "uv sync --locked"
 }

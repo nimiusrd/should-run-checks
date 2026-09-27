@@ -2,13 +2,14 @@
 
 import json
 import os
-from pathlib import Path
 import re
 import subprocess
 import sys
 import tomllib
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
+from pathlib import Path
+from typing import Any
 
 CONFIG_KEYS = ("skipExtensions", "skipDirectories", "alwaysRunFiles")
 DEFAULT_CONFIG = ".github/ci-skip-rules.toml"
@@ -44,20 +45,20 @@ def validate_config(data: object) -> Config:
         if (
             not extension.startswith(".")
             or len(extension) < 2
-            or any(char in extension for char in '/\\*?[]{}!')
+            or any(char in extension for char in "/\\*?[]{}!")
         ):
             raise ValueError(f"拡張子はドットから始まる文字列で指定してください: {extension}")
     for key in ("skipDirectories", "alwaysRunFiles"):
         for path in data[key]:
-            if any(char in path for char in '\\*?[]{}!') or any(
+            if any(char in path for char in "\\*?[]{}!") or any(
                 part in ("", ".", "..") for part in path.split("/")
             ):
                 raise ValueError(f"{key} にはglobを使わず相対パスを指定してください: {path}")
     return Config(*(tuple(data[key]) for key in CONFIG_KEYS))
 
 
-def unique_json_object(pairs: list[tuple[str, object]]) -> dict:
-    result = {}
+def unique_json_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
     for key, value in pairs:
         if key in result:
             raise ValueError(f"重複した設定キー: {key}")
@@ -87,7 +88,9 @@ def should_run_checks(changed_files: list[str], config: Config) -> bool:
     return False
 
 
-def evaluate_changes(workspace: Path, event_name: str, event: dict, config: Config) -> Result:
+def evaluate_changes(
+    workspace: Path, event_name: str, event: Mapping[str, Any], config: Config
+) -> Result:
     if event_name == "pull_request":
         pull_request = event.get("pull_request", {})
         base = pull_request.get("base", {}).get("sha")
@@ -101,15 +104,25 @@ def evaluate_changes(workspace: Path, event_name: str, event: dict, config: Conf
     else:
         return Result(True, "unsupported-event")
     for sha in (base, head):
-        if not isinstance(sha, str) or not re.fullmatch(r"(?:[a-fA-F0-9]{40}|[a-fA-F0-9]{64})", sha):
+        if not isinstance(sha, str) or not re.fullmatch(
+            r"(?:[a-fA-F0-9]{40}|[a-fA-F0-9]{64})", sha
+        ):
             raise ValueError("イベントに有効なbase/headコミットSHAがありません。")
     # 削除とリネーム前後を含め、空白・改行のあるパスもNUL区切りで保持する。
     diff = subprocess.run(
-        ["git", "-C", str(workspace), "diff", "--no-renames", "--name-only", "-z",
-         f"{base}{separator}{head}", "--"],
+        [
+            "git",
+            "-C",
+            str(workspace),
+            "diff",
+            "--no-renames",
+            "--name-only",
+            "-z",
+            f"{base}{separator}{head}",
+            "--",
+        ],
         stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=True,
     ).stdout
     files = [os.fsdecode(path) for path in diff.split(b"\0") if path]
@@ -126,7 +139,9 @@ def write_result(result: Result, env: Mapping[str, str]) -> None:
             stream.write(output)
     print(output, end="")
     if env.get("GITHUB_STEP_SUMMARY"):
-        summary = f"## Should Run Checks\n\n- チェックを実行: {value}\n- 判定理由: {result.reason}\n"
+        summary = (
+            f"## Should Run Checks\n\n- チェックを実行: {value}\n- 判定理由: {result.reason}\n"
+        )
         if result.changed_file_count is not None:
             summary += f"- 変更パス数: {result.changed_file_count}\n"
         with open(env["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8", newline="\n") as stream:

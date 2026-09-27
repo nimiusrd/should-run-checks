@@ -5,7 +5,8 @@ name = "should-run-checks"
 script = '''
 set -eu
 devcontainer up --workspace-folder .
-devcontainer exec --workspace-folder . python --version
+devcontainer exec --workspace-folder . uv --version
+devcontainer exec --workspace-folder . uv sync --locked
 '''
 
 [[actions]]
@@ -16,14 +17,17 @@ command = "devcontainer up --workspace-folder ."
 [[actions]]
 name = "テスト"
 icon = "test"
-command = "devcontainer exec --workspace-folder . python -m unittest discover -s tests -v"
+command = "devcontainer exec --workspace-folder . uv run --locked python -m unittest discover -s tests -v"
 
 [[actions]]
 name = "提出前チェック"
 icon = "test"
 command = '''
 set -eu
-devcontainer exec --workspace-folder . python -m unittest discover -s tests -v
-devcontainer exec --workspace-folder . python -m compileall -q should_run_checks.py tests
+devcontainer exec --workspace-folder . uv run --locked python -m unittest discover -s tests -v
+devcontainer exec --workspace-folder . uv run --locked python -m compileall -q should_run_checks.py tests
+devcontainer exec --workspace-folder . uv run --locked mypy
+devcontainer exec --workspace-folder . uv run --locked ruff check .
+devcontainer exec --workspace-folder . uv run --locked ruff format --check .
 git diff --check
 '''
