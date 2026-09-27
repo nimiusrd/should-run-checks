@@ -261,6 +261,13 @@ class GitAndActionTests(unittest.TestCase):
         self.assertEqual(output, "run_checks=false\nreason=skip-only\n")
         self.assertIn("skip-only", Path(env["GITHUB_STEP_SUMMARY"]).read_text(encoding="utf-8"))
 
+    def test_repository_config_runs_checks_for_markdown(self):
+        self.write("docs/example.md")
+        rules = (ROOT / DEFAULT_CONFIG).read_text(encoding="utf-8")
+        result, output, _ = self.execute({"before": self.base, "after": self.commit()}, rules)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(output, "run_checks=true\nreason=changed-files\n")
+
     def test_json_entrypoint(self):
         result, output, _ = self.execute(
             {"before": "0" * 40}, json.dumps(DATA), "custom/rules.json"
