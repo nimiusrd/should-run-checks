@@ -1,0 +1,24 @@
+[project]
+name = "should-run-checks"
+version = "0.3.0"
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+dev = ["mypy==2.3.1", "ruff==0.16.9"]
+
+[tool.uv]
+package = false
+required-version = "==0.12.19"
+
+[tool.mypy]
+python_version = "3.11"
+files = ["should_run_checks.py", "tests"]
+strict = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B"]

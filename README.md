@@ -1,7 +1,7 @@
 # Should Run Checks
 
 変更されたファイルとスキップルールを照合し、CIのチェックを実行する必要があるか判定します。
-Python標準ライブラリだけで実装し、TOMLを`tomllib`で読み込みます。外部Pythonパッケージ、npm依存、バンドル生成はありません。
+Python標準ライブラリだけで実装し、TOMLを`tomllib`で読み込みます。実行時の外部Pythonパッケージ、npm依存、バンドル生成はありません。開発用チェックにはmypyとRuffを使用します。
 
 ## 使い方
 
@@ -74,24 +74,32 @@ Action内のセットアップはランナーのツールキャッシュを使�
 ## 開発
 
 Python 3.11以降とGitを使います。テストも標準の`unittest`で実行できます。
+Dev Containerにuv 0.12.19を組み込み、作成時に`uv sync --locked`で開発環境を準備します。mypy・Ruffは`pyproject.toml`のdevグループで管理し、推移的依存関係も含めて`uv.lock`に固定します。既存コンテナは再ビルドしてuvを導入してください。依存関係の同期とチェックには次のコマンドを使います。
 
 ```bash
 devcontainer up --workspace-folder .
-devcontainer exec --workspace-folder . python -m unittest discover -s tests -v
-devcontainer exec --workspace-folder . python -m compileall -q should_run_checks.py tests
+devcontainer exec --workspace-folder . uv sync --locked
+devcontainer exec --workspace-folder . uv run --locked python -m unittest discover -s tests -v
+devcontainer exec --workspace-folder . uv run --locked python -m compileall -q should_run_checks.py tests
+devcontainer exec --workspace-folder . uv run --locked mypy
+devcontainer exec --workspace-folder . uv run --locked ruff check .
+devcontainer exec --workspace-folder . uv run --locked ruff format --check .
+git diff --check
 ```
 
-CIはUbuntuのPython 3.11・3.13の2ジョブでテストします。3.11は最低対応バージョン、3.13はActionで使うバージョンの確認用です。3.13のジョブでは、テスト用Pythonのセットアップ前にActionを実行し、有効な出力が得られることと呼び出し元のPATHが変わらないことも確認します。
+`pyproject.toml`で本体とテストにmypyのstrictチェックを設定し、Ruffでlint・import順序・Python 3.11向けの記法とフォーマットを確認します。整形する場合は`devcontainer exec --workspace-folder . uv run --locked ruff format .`を実行してください。設定項目は[mypy公式ドキュメント](https://mypy.readthedocs.io/en/stable/config_file.html)と[Ruff公式ドキュメント](https://docs.astral.sh/ruff/configuration/)を参照してください。
+
+CIはUbuntuのPython 3.11・3.13の2ジョブでテストとmypy・Ruffのチェックを実行します。3.11は最低対応バージョン、3.13はActionで使うバージョンの確認用です。3.13のジョブでは、テスト用Pythonや開発用ツールのセットアップ前にActionを実行し、有効な出力が得られることと呼び出し元のPATHが変わらないことも確認します。
 
 ### Codexアプリのローカル環境
 
 ホストでDockerとDev Container CLIを利用できる状態にして、Dockerを起動してください。
 Codex用の設定は`.codex/environments/environment.toml`に保存しています。
-新しいworktreeのセットアップではDev Containerを起動し、Pythonのバージョンを確認します。
+新しいworktreeのセットアップではDev Containerを起動し、uvのバージョンを確認して開発環境を同期します。
 既存のチェックアウトでは「コンテナ起動」アクションを実行してください。
 
 - 「テスト」: コンテナ内でユニットテストを実行します。
-- 「提出前チェック」: コンテナ内でユニットテストと構文チェックを順に実行し、ホストで`git diff --check`を確認します。失敗した場合はそこで停止します。
+- 「提出前チェック」: コンテナ内でユニットテスト・構文チェック・mypy・Ruffを順に実行し、ホストで`git diff --check`を確認します。失敗した場合はそこで停止します。
 
 プロジェクトの実行コマンドには`devcontainer exec --workspace-folder .`を使い、Git操作はホストで行います。
 設定方法の詳細は[Codexのローカル環境](https://learn.chatgpt.com/docs/environments/local-environment)を参照してください。
@@ -101,7 +109,7 @@ Codex用の設定は`.codex/environments/environment.toml`に保存していま�
 これはDockerのディスク容量不足そのものを解消するものではありません。
 
 ```bash
-devcontainer exec --workspace-folder . env TMPDIR=/dev/shm python -m unittest discover -s tests -v
+devcontainer exec --workspace-folder . env TMPDIR=/dev/shm uv run --locked python -m unittest discover -s tests -v
 ```
 
 [MIT License](LICENSE)
