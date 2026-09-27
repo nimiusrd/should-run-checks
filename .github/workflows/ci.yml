@@ -43,7 +43,7 @@ jobs:
       - run: uv run --locked python -m unittest discover -s tests -v
         env:
           PYTHONUTF8: '1'
-      - run: uv run --locked python -m compileall -q should_run_checks.py tests
+      - run: uv run --locked python -m compileall -q should_run_checks.py create_release.py tests
       - run: uv run --locked mypy
       - run: uv run --locked ruff check .
       - run: uv run --locked ruff format --check .

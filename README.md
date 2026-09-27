@@ -71,6 +71,16 @@ Action内のセットアップはランナーのツールキャッシュを使�
 
 既定パスは`.github/ci-skip-rules.toml`です。外部ライブラリをなくすためYAML対応を終了しました。YAML設定を上のTOML形式へ置き換えてください。`.json`を明示した既存のJSON設定は標準の`json`で読み込めます。
 
+## リリース
+
+`main` へ pull request がマージされ、そのコミットで CI ワークフローが成功すると、Release ワークフローが `create_release.py` を実行します。成功したコミットそのものにセマンティックバージョンのタグと GitHub Release を作成します。本文の固定参照は40桁のコミットSHAです。利用側はそのSHAに Action を固定します。
+
+`pyproject.toml` の `version` が最新のリリースタグより新しいときは、その値をタグにします。それ以外は最新タグから上げます。上げ幅は patch です。マージされた pull request に `release:minor` または `release:major` ラベルがあるときは、その単位で上げます。ラベルが両方ある場合はリリースしません。
+
+同じコミットにリリースタグがある場合は新しく作りません。CI が成功していないコミットと、マージされた pull request がない push はリリースしません。
+
+Cursor Automation の Pull request merged はマージ直後に起動します。タグを付けるのは、その後に CI が成功してから実行する `create_release.py` です。同じ条件で繰り返してもタグは一つです。確認だけ行う場合は `python3 create_release.py --dry-run` を使います。
+
 ## 開発
 
 Python 3.11以降とGitを使います。テストも標準の`unittest`で実行できます。
@@ -80,7 +90,7 @@ Dev Containerにuv 0.12.19を組み込み、作成時に`uv sync --locked`で開
 devcontainer up --workspace-folder .
 devcontainer exec --workspace-folder . uv sync --locked
 devcontainer exec --workspace-folder . uv run --locked python -m unittest discover -s tests -v
-devcontainer exec --workspace-folder . uv run --locked python -m compileall -q should_run_checks.py tests
+devcontainer exec --workspace-folder . uv run --locked python -m compileall -q should_run_checks.py create_release.py tests
 devcontainer exec --workspace-folder . uv run --locked mypy
 devcontainer exec --workspace-folder . uv run --locked ruff check .
 devcontainer exec --workspace-folder . uv run --locked ruff format --check .
