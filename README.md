@@ -7,7 +7,17 @@ Python標準ライブラリだけで実装し、TOMLを`tomllib`で読み込み�
 
 Actionのサポート対象はUbuntuランナーです。`runs-on: ubuntu-latest`の判定専用ジョブで実行し、後続のチェックにはジョブ出力を渡してください。後続のチェックはmacOS・Windowsでも実行できます。Action自体をmacOS・Windowsで実行する使い方はサポート対象外です。
 
-利用するリポジトリに`.github/ci-skip-rules.toml`を作成します。
+利用するリポジトリに`.github/ci-skip-rules.toml`を作成します。初期設定ではスキップ対象を指定しません。`.md`を含め、変更されたファイルがあればチェックを実行します。
+
+```toml
+skipExtensions = []
+skipDirectories = []
+alwaysRunFiles = []
+```
+
+設定ファイルがない場合はエラーです。暗黙のスキップルールへのフォールバックは行いません。
+
+スキップする対象がある場合だけ、明示的に指定してください。例えば、次の設定は`.md`と`mockups`配下を対象にします。
 
 ```toml
 # この拡張子・ディレクトリだけの変更ならスキップ
