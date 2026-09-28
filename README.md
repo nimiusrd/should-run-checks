@@ -75,11 +75,11 @@ Action内のセットアップはランナーのツールキャッシュを使�
 
 Cursor Automation のトリガー Pull request merged で、`.cursor/automations/release-on-merge.md` の手順を実行します。対象はこのリポジトリです。Pull request を作成するツールは無効にします。
 
-手順は、マージコミットの CI が成功してから `create_release.py` を実行します。成功したコミットそのものにセマンティックバージョンのタグと GitHub Release を作成します。本文の固定参照は40桁のコミットSHAです。利用側はそのSHAに Action を固定します。
+Automation がマージコミットのバージョンを決め、CI が成功したそのコミットにタグと GitHub Release を作成します。本文の固定参照は40桁のコミットSHAです。利用側はそのSHAに Action を固定します。`pyproject.toml` は書き換えません。
 
 `pyproject.toml` の `version` が最新のリリースタグより新しいときは、その値をタグにします。それ以外は最新タグから上げます。上げ幅は patch です。マージされた pull request に `release:minor` または `release:major` ラベルがあるときは、その単位で上げます。ラベルが両方ある場合はリリースしません。
 
-同じコミットにリリースタグがある場合は新しく作りません。CI が成功していないコミットと、マージされた pull request がない push はリリースしません。確認だけ行う場合は `python3 create_release.py --dry-run` を使います。
+同じコミットにリリースタグがある場合は新しく作りません。CI が成功していないコミットと、マージされた pull request がない push はリリースしません。
 
 ## 開発
 
@@ -90,7 +90,7 @@ Dev Containerにuv 0.12.19を組み込み、作成時に`uv sync --locked`で開
 devcontainer up --workspace-folder .
 devcontainer exec --workspace-folder . uv sync --locked
 devcontainer exec --workspace-folder . uv run --locked python -m unittest discover -s tests -v
-devcontainer exec --workspace-folder . uv run --locked python -m compileall -q should_run_checks.py create_release.py tests
+devcontainer exec --workspace-folder . uv run --locked python -m compileall -q should_run_checks.py tests
 devcontainer exec --workspace-folder . uv run --locked mypy
 devcontainer exec --workspace-folder . uv run --locked ruff check .
 devcontainer exec --workspace-folder . uv run --locked ruff format --check .

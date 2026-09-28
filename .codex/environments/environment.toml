@@ -25,7 +25,7 @@ icon = "test"
 command = '''
 set -eu
 devcontainer exec --workspace-folder . uv run --locked python -m unittest discover -s tests -v
-devcontainer exec --workspace-folder . uv run --locked python -m compileall -q should_run_checks.py create_release.py tests
+devcontainer exec --workspace-folder . uv run --locked python -m compileall -q should_run_checks.py tests
 devcontainer exec --workspace-folder . uv run --locked mypy
 devcontainer exec --workspace-folder . uv run --locked ruff check .
 devcontainer exec --workspace-folder . uv run --locked ruff format --check .

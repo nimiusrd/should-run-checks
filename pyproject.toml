@@ -13,7 +13,7 @@ required-version = "==0.12.19"
 
 [tool.mypy]
 python_version = "3.11"
-files = ["should_run_checks.py", "create_release.py", "tests"]
+files = ["should_run_checks.py", "tests"]
 strict = true
 
 [tool.ruff]
