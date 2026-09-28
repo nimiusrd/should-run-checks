@@ -7,4 +7,4 @@
 - TOMLは標準の`tomllib`で読む。JSONは標準の`json`で読めるが、YAMLの独自パーサは実装しない。
 - 判定できない場合にチェックを省略しない。設定不備やGitの失敗を `run_checks=false` に変換しない。
 - 設定は利用側のリポジトリに置く。特定プロジェクトのディレクトリ名を実装へ埋め込まない。
-- リリースは、mainへマージされたpull requestのうちCIが成功したコミットにReleaseワークフローがタグを付ける。利用側は40桁のコミットSHAに固定する。
+- リリースは、Cursor AutomationのPull request mergedで起動し、CIが成功したマージコミットに`create_release.py`がタグを付ける。利用側は40桁のコミットSHAに固定する。

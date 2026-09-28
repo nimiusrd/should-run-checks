@@ -73,13 +73,13 @@ Action内のセットアップはランナーのツールキャッシュを使�
 
 ## リリース
 
-`main` へ pull request がマージされ、そのコミットで CI ワークフローが成功すると、Release ワークフローが `create_release.py` を実行します。成功したコミットそのものにセマンティックバージョンのタグと GitHub Release を作成します。本文の固定参照は40桁のコミットSHAです。利用側はそのSHAに Action を固定します。
+Cursor Automation のトリガー Pull request merged で、`.cursor/automations/release-on-merge.md` の手順を実行します。対象はこのリポジトリです。Pull request を作成するツールは無効にします。
+
+手順は、マージコミットの CI が成功してから `create_release.py` を実行します。成功したコミットそのものにセマンティックバージョンのタグと GitHub Release を作成します。本文の固定参照は40桁のコミットSHAです。利用側はそのSHAに Action を固定します。
 
 `pyproject.toml` の `version` が最新のリリースタグより新しいときは、その値をタグにします。それ以外は最新タグから上げます。上げ幅は patch です。マージされた pull request に `release:minor` または `release:major` ラベルがあるときは、その単位で上げます。ラベルが両方ある場合はリリースしません。
 
-同じコミットにリリースタグがある場合は新しく作りません。CI が成功していないコミットと、マージされた pull request がない push はリリースしません。
-
-Cursor Automation の Pull request merged はマージ直後に起動します。タグを付けるのは、その後に CI が成功してから実行する `create_release.py` です。同じ条件で繰り返してもタグは一つです。確認だけ行う場合は `python3 create_release.py --dry-run` を使います。
+同じコミットにリリースタグがある場合は新しく作りません。CI が成功していないコミットと、マージされた pull request がない push はリリースしません。確認だけ行う場合は `python3 create_release.py --dry-run` を使います。
 
 ## 開発
 

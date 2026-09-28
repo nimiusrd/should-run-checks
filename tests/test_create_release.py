@@ -401,19 +401,26 @@ class LoadTests(unittest.TestCase):
             execute(happy_client(), pyproject='[project]\nversion = "0.3"\n')
 
 
-class WorkflowTests(unittest.TestCase):
-    def test_release_workflow_follows_successful_main_ci(self) -> None:
-        text = (Path(__file__).resolve().parents[1] / ".github/workflows/release.yml").read_text(
-            encoding="utf-8"
-        )
-        self.assertIn("workflows: [CI]", text)
-        self.assertIn("contents: write", text)
-        self.assertIn("pull-requests: read", text)
-        self.assertIn("github.event.workflow_run.conclusion == 'success'", text)
-        self.assertIn("github.event.workflow_run.event == 'push'", text)
-        self.assertIn("github.event.workflow_run.head_branch == 'main'", text)
+class AutomationTests(unittest.TestCase):
+    def test_pull_request_merged_runs_create_release(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        text = (root / ".cursor/automations/release-on-merge.md").read_text(encoding="utf-8")
+        self.assertIn("Pull request merged", text)
         self.assertIn("python3 create_release.py", text)
-        self.assertNotIn("--dry-run", text)
+        self.assertIn("RELEASE_SHA", text)
+        self.assertIn("RELEASE_CI_RUN_ID", text)
+        self.assertIn("40桁", text)
+        self.assertIn("git tag", text)
+        self.assertIn("gh release create", text)
+        self.assertFalse((root / ".github/workflows/release.yml").exists())
+
+    def test_cli_token_is_used_when_environment_is_empty(self) -> None:
+        with (
+            mock.patch.dict(os.environ, {"GITHUB_TOKEN": "", "GH_TOKEN": ""}, clear=False),
+            mock.patch.object(release, "github_token_from_cli", return_value="from-cli") as lookup,
+        ):
+            self.assertEqual(release.resolve_github_token(), "from-cli")
+        lookup.assert_called_once_with()
 
 
 class HttpTests(unittest.TestCase):
@@ -496,6 +503,11 @@ class MainTests(unittest.TestCase):
         stderr = StringIO()
         with (
             mock.patch.dict(os.environ, {}, clear=True),
+            mock.patch.object(
+                release,
+                "github_token_from_cli",
+                side_effect=release.ReleaseError("GITHUB_TOKENがありません。"),
+            ),
             redirect_stderr(stderr),
         ):
             code = release.main([])

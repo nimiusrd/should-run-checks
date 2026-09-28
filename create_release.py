@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import subprocess
 import sys
 import tomllib
 import urllib.error
@@ -734,20 +735,59 @@ class HttpGitHub:
         return body
 
 
+def read_command(args: list[str], failure: str) -> str:
+    try:
+        completed = subprocess.run(args, check=False, capture_output=True, text=True)
+    except OSError as error:
+        raise ReleaseError(failure) from error
+    if completed.returncode != 0:
+        raise ReleaseError(failure)
+    value = completed.stdout.strip()
+    if not value or "\n" in value:
+        raise ReleaseError(failure)
+    return value
+
+
+def github_token_from_cli() -> str:
+    return read_command(["gh", "auth", "token"], "GITHUB_TOKENがありません。")
+
+
+def github_repository_from_cli() -> str:
+    return validate_repo(
+        read_command(
+            ["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
+            "リポジトリ名を決定できません。",
+        )
+    )
+
+
+def resolve_github_token() -> str:
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or ""
+    token = token.strip()
+    if token:
+        return token
+    return github_token_from_cli()
+
+
+def resolve_repository() -> str:
+    repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
+    if repository:
+        return validate_repo(repository)
+    return github_repository_from_cli()
+
+
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if args not in ([], ["--dry-run"]):
         print("使い方: create_release.py [--dry-run]", file=sys.stderr)
         return 2
     try:
-        token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or ""
-        if not token:
-            raise ReleaseError("GITHUB_TOKENがありません。")
+        token = resolve_github_token()
         pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
         return execute(
             HttpGitHub(token, os.environ.get("GITHUB_API_URL", "https://api.github.com")),
             dry_run=args == ["--dry-run"],
-            repo=os.environ.get("GITHUB_REPOSITORY", ""),
+            repo=resolve_repository(),
             sha=os.environ.get("RELEASE_SHA", ""),
             event=os.environ.get("RELEASE_EVENT", ""),
             branch=os.environ.get("RELEASE_BRANCH", ""),
