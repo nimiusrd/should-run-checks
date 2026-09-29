@@ -73,7 +73,7 @@ Action内のセットアップはランナーのツールキャッシュを使�
 
 ## リリース
 
-Cursor Automation のトリガー Pull request merged で、`.cursor/automations/release-on-merge.md` の手順を実行します。対象はこのリポジトリです。Pull request を作成するツールは無効にします。
+Cursor Automation のトリガー Pull request merged でリリースします。対象はこのリポジトリです。Pull request を作成するツールは無効にします。
 
 Automation がマージコミットのバージョンを決め、CI が成功したそのコミットにタグと GitHub Release を作成します。本文の固定参照は40桁のコミットSHAです。利用側はそのSHAに Action を固定します。`pyproject.toml` は書き換えません。
 
