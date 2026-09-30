@@ -8,25 +8,18 @@ permissions:
   contents: read
 jobs:
   test:
-    strategy:
-      fail-fast: false
-      matrix:
-        python: ['3.11', '3.13']
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: 呼び出し元のPATHを保存
-        if: matrix.python == '3.13'
         shell: bash
         run: printf '%s' "$PATH" > "$RUNNER_TEMP/caller-path"
-      # 呼び出し元にPythonやuvのセットアップを置かずに実行する。
+      # 呼び出し元でNode.jsやnpm依存を準備せず、同梱JavaScriptを実行する。
       - uses: ./
-        if: matrix.python == '3.13'
         id: scope
       - name: Actionの出力とPATHを検証
-        if: matrix.python == '3.13'
         shell: bash
         env:
           RUN_CHECKS: ${{ steps.scope.outputs.run_checks }}
@@ -35,16 +28,14 @@ jobs:
           test "$RUN_CHECKS" = true || test "$RUN_CHECKS" = false
           test -n "$REASON"
           test "$PATH" = "$(cat "$RUNNER_TEMP/caller-path")"
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          version: '0.12.19'
-          python-version: ${{ matrix.python }}
-      - run: uv sync --locked
-      - run: uv run --locked python -m unittest discover -s tests -v
-        env:
-          PYTHONUTF8: '1'
-      - run: uv run --locked python -m compileall -q should_run_checks.py tests
-      - run: uv run --locked mypy
-      - run: uv run --locked ruff check .
-      - run: uv run --locked ruff format --check .
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: 配布JavaScriptとソースの一致を検証
+        run: git diff --exit-code -- dist/index.js
+      - run: npm test
+      - run: npm run check
       - run: git diff --check

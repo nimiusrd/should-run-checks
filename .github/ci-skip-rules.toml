@@ -1,4 +1,0 @@
-# スキップする対象は明示的に指定する
-skipExtensions = []
-skipDirectories = []
-alwaysRunFiles = []
