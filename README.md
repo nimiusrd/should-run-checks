@@ -1,33 +1,11 @@
 # Should Run Checks
 
-変更されたファイルとスキップルールを照合し、CIのチェックを実行する必要があるか判定します。
-Python標準ライブラリだけで実装し、TOMLを`tomllib`で読み込みます。実行時の外部Pythonパッケージ、npm依存、バンドル生成はありません。開発用チェックにはmypyとRuffを使用します。
+変更されたファイルとworkflowの`with`に指定したスキップルールを照合し、CIのチェックを実行する必要があるか判定します。
+TypeScriptで実装し、コンパイル済みJavaScriptを同梱するNode.js 24 Actionです。実行時の外部パッケージや設定ファイル用パーサはありません。
 
 ## 使い方
 
-Actionのサポート対象はUbuntuランナーです。`runs-on: ubuntu-latest`の判定専用ジョブで実行し、後続のチェックにはジョブ出力を渡してください。後続のチェックはmacOS・Windowsでも実行できます。Action自体をmacOS・Windowsで実行する使い方はサポート対象外です。
-
-利用するリポジトリに`.github/ci-skip-rules.toml`を作成します。初期設定ではスキップ対象を指定しません。`.md`を含め、変更されたファイルがあればチェックを実行します。
-
-```toml
-skipExtensions = []
-skipDirectories = []
-alwaysRunFiles = []
-```
-
-設定ファイルがない場合はエラーです。暗黙のスキップルールへのフォールバックは行いません。
-
-スキップする対象がある場合だけ、明示的に指定してください。例えば、次の設定は`.md`と`mockups`配下を対象にします。
-
-```toml
-# この拡張子・ディレクトリだけの変更ならスキップ
-skipExtensions = [".md"]
-skipDirectories = ["mockups"]
-# 上の条件より優先して実行するファイル
-alwaysRunFiles = ["docs/generated/api.md"]
-```
-
-3つのキーは必須です。不要なルールには`[]`を指定します。拡張子は`.`から始め、ディレクトリとファイルはリポジトリルートからの相対パスを`/`区切りで指定します。大文字小文字を区別します。`./`・末尾の`/`・globは使いません。
+Actionのサポート対象はUbuntuランナーです。`runs-on: ubuntu-latest`の判定専用ジョブで実行し、後続のチェックにはジョブ出力を渡してください。後続のチェックはmacOS・Windowsでも実行できます。
 
 ```yaml
 jobs:
@@ -42,11 +20,18 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
-      # 本番ではリリースタグが指す40桁のコミットSHAに固定してください。
-      - uses: nimiusrd/should-run-checks@v0.3.0
+      # 移行版のリリース後、そのタグが指す40桁のコミットSHAに置き換えてください。
+      - uses: nimiusrd/should-run-checks@<40桁のコミットSHA>
         id: scope
         with:
-          config-path: .github/ci-skip-rules.toml
+          skip-extensions: |
+            .md
+            .txt
+          skip-directories: |
+            mockups
+            design/drafts
+          always-run-files: |
+            docs/generated/api.md
   test:
     needs: scope
     if: ${{ always() && needs.scope.outputs.run_checks != 'false' }}
@@ -55,61 +40,62 @@ jobs:
       - run: echo 'ここでプロジェクトのチェックを実行'
 ```
 
-呼び出し元でPythonのセットアップは不要です。Composite Action内部でSHA固定の`actions/setup-python`がPython 3.13を準備し、その実行ファイルを直接起動します。`update-environment: false`により呼び出し元のPATHは変更しません。Gitはランナーに必要です。
+設定ファイルは不要です。各入力は任意で、未指定または空文字列の場合は対象なしになります。`with`全体を省略すれば、Markdownを含め変更されたファイルがあればチェックを実行します。
 
-Action内のセットアップはランナーのツールキャッシュを使い、必要に応じてPythonをダウンロードします。Python本体の準備までゼロにする構成ではありません。
+| 入力 | 用途 |
+| --- | --- |
+| `skip-extensions` | この拡張子のファイルだけならスキップ |
+| `skip-directories` | このディレクトリ配下の変更だけならスキップ |
+| `always-run-files` | スキップ条件より優先して実行するファイル |
+
+各入力は**1行に1つ**指定します。空行と各行の前後の空白は無視します。カンマ区切り、JSON配列、YAML配列ではなく、上例の`|`による複数行文字列を使ってください。内部の空白や日本語は使用できます。改行や前後の空白を含む名前をルールへ指定することはできません。
+
+拡張子は`.`から始め、ディレクトリとファイルはリポジトリルートからの相対パスを`/`区切りで指定します。大文字小文字を区別します。`./`・末尾の`/`・globは使いません。
+
+呼び出し元でPython・Node.jsのセットアップや`npm install`は不要です。GitHub Actionsが用意するNode.js 24で同梱の`dist/index.js`を実行し、呼び出し元のPATHは変更しません。Gitと比較対象の履歴が必要です。
 
 ## 判定
 
-- `alwaysRunFiles`はスキップ条件より優先します。対象外のファイルが1つでもあれば`run_checks=true`を返します。
+- `always-run-files`はスキップ条件より優先します。スキップ対象外のファイルが1つでもあれば`run_checks=true`を返します。
 - PRはmerge-baseからの差分、pushはイベントの`before`と`after`の差分を使います。削除とリネーム前後の両パスを判定します。
 - 全変更がスキップ対象なら`false`、差分がない場合も`false`です。初回pushとPR・push以外のイベントでは`true`です。
-- 設定やGit比較に失敗した場合は`true`を出力してActionも失敗します。利用側は上例の`always()`と`!= 'false'`で、判定失敗時にもチェックを省略しないようにします。
+- 入力やGit比較に失敗した場合は`true`を出力してActionも失敗します。利用側は上例の`always()`と`!= 'false'`で、判定失敗時にもチェックを省略しないようにします。
 - 出力`reason`とActions Summaryにも判定理由を記録します。値は`changed-files`・`skip-only`・`no-changes`・`initial-push`・`unsupported-event`・`error`です。
 
-## v0.2からの移行
+## 設定ファイル方式からの移行
 
-既定パスは`.github/ci-skip-rules.toml`です。外部ライブラリをなくすためYAML対応を終了しました。YAML設定を上のTOML形式へ置き換えてください。`.json`を明示した既存のJSON設定は標準の`json`で読み込めます。
+この移行版では、Python Composite ActionとTOML・JSON設定ファイルの読み込みを廃止します。旧リリースのv0.3.0は設定ファイル方式のままです。
+
+| 旧設定キー | 新しい`with`入力 |
+| --- | --- |
+| `skipExtensions` | `skip-extensions` |
+| `skipDirectories` | `skip-directories` |
+| `alwaysRunFiles` | `always-run-files` |
+
+配列の各要素を入力の各行へ移し、`config-path`を削除してください。`config-path`に値を指定すると`run_checks=true`と`reason=error`を出力して失敗します。設定ファイルは読み込みません。暗黙に既定の設定ファイルを使っていた場合も、ルールを`with`へ移してください。
 
 ## 開発
 
-Python 3.11以降とGitを使います。テストも標準の`unittest`で実行できます。
-Dev Containerにuv 0.12.19を組み込み、作成時に`uv sync --locked`で開発環境を準備します。mypy・Ruffは`pyproject.toml`のdevグループで管理し、推移的依存関係も含めて`uv.lock`に固定します。既存コンテナは再ビルドしてuvを導入してください。依存関係の同期とチェックには次のコマンドを使います。
+Node.js 24とGitを使います。開発依存はTypeScriptコンパイラとNode.jsの型定義だけで、`package-lock.json`で固定します。テストはNode.js標準のテストランナーを使います。
 
 ```bash
 devcontainer up --workspace-folder .
-devcontainer exec --workspace-folder . uv sync --locked
-devcontainer exec --workspace-folder . uv run --locked python -m unittest discover -s tests -v
-devcontainer exec --workspace-folder . uv run --locked python -m compileall -q should_run_checks.py tests
-devcontainer exec --workspace-folder . uv run --locked mypy
-devcontainer exec --workspace-folder . uv run --locked ruff check .
-devcontainer exec --workspace-folder . uv run --locked ruff format --check .
+devcontainer exec --workspace-folder . npm ci
+devcontainer exec --workspace-folder . npm run build
+devcontainer exec --workspace-folder . npm test
+devcontainer exec --workspace-folder . npm run check
 git diff --check
 ```
 
-`pyproject.toml`で本体とテストにmypyのstrictチェックを設定し、Ruffでlint・import順序・Python 3.11向けの記法とフォーマットを確認します。整形する場合は`devcontainer exec --workspace-folder . uv run --locked ruff format .`を実行してください。設定項目は[mypy公式ドキュメント](https://mypy.readthedocs.io/en/stable/config_file.html)と[Ruff公式ドキュメント](https://docs.astral.sh/ruff/configuration/)を参照してください。
-
-CIはUbuntuのPython 3.11・3.13の2ジョブでテストとmypy・Ruffのチェックを実行します。3.11は最低対応バージョン、3.13はActionで使うバージョンの確認用です。3.13のジョブでは、テスト用Pythonや開発用ツールのセットアップ前にActionを実行し、有効な出力が得られることと呼び出し元のPATHが変わらないことも確認します。
+ソースを変更したら`npm run build`で生成する`dist/index.js`もコミットしてください。テストは配布JavaScriptに対して実行し、CIでは再ビルドによる差分がないことも検証します。CIはUbuntuで、呼び出し元のセットアップ前にActionの出力とPATHが変わらないことを確認します。
 
 ### Codexアプリのローカル環境
 
-ホストでDockerとDev Container CLIを利用できる状態にして、Dockerを起動してください。
-Codex用の設定は`.codex/environments/environment.toml`に保存しています。
-新しいworktreeのセットアップではDev Containerを起動し、uvのバージョンを確認して開発環境を同期します。
-既存のチェックアウトでは「コンテナ起動」アクションを実行してください。
+DockerとDev Container CLIを利用できる状態にして、Dockerを起動してください。Codex用の設定は`.codex/environments/environment.toml`に保存しています。
+既存のPython用コンテナから移行する場合は、`devcontainer up --workspace-folder . --remove-existing-container`で作り直してください。
 
-- 「テスト」: コンテナ内でユニットテストを実行します。
-- 「提出前チェック」: コンテナ内でユニットテスト・構文チェック・mypy・Ruffを順に実行し、ホストで`git diff --check`を確認します。失敗した場合はそこで停止します。
-
-プロジェクトの実行コマンドには`devcontainer exec --workspace-folder .`を使い、Git操作はホストで行います。
-設定方法の詳細は[Codexのローカル環境](https://learn.chatgpt.com/docs/environments/local-environment)を参照してください。
-
-テストが`No space left on device`で失敗した場合は、Dockerの空き容量を確認してください。
-一時的な検証には、コンテナの`/dev/shm`に空きがあれば次のコマンドを使えます。
-これはDockerのディスク容量不足そのものを解消するものではありません。
-
-```bash
-devcontainer exec --workspace-folder . env TMPDIR=/dev/shm uv run --locked python -m unittest discover -s tests -v
-```
+- 「コンテナ起動」: Dev Containerを起動します。
+- 「テスト」: 同梱JavaScriptのテストを実行します。ソース変更後は先にビルドしてください。
+- 「提出前チェック」: 依存インストール、ビルド、テスト、型・構文チェックと`git diff --check`を実行します。
 
 [MIT License](LICENSE)

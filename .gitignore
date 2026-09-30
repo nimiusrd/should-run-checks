@@ -1,10 +1,10 @@
+node_modules/
+.npm-cache/
+
+# Python版から移行した環境に残る開発キャッシュ
 __pycache__/
 *.pyc
 .mypy_cache/
 .ruff_cache/
 .venv/
 .uv-cache/
-
-# 移行前のローカル開発キャッシュ
-node_modules/
-.npm-cache/
