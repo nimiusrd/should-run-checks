@@ -28,7 +28,7 @@ git diff --check
 - TOML・JSON設定ファイルの廃止と、`skip-extensions`・`skip-directories`・`always-run-files`への移行。各入力は1行に1つ指定すること。
 - `config-path`に値を指定するとエラーになること。
 - 判定用ジョブのサポート対象はUbuntuであることと、利用側でPython・Node.jsのセットアップが不要であること。
-- 公開対象の40桁のコミットSHAと、[READMEの移行方法](../README.md#設定ファイル方式からの移行)へのリンク。
+- 公開対象の40桁のコミットSHAと、[READMEの移行方法](README.md#設定ファイル方式からの移行)へのリンク。
 
 ## 2. 公開するコミットを固定する
 
@@ -48,7 +48,7 @@ git show "${release_sha}:package-lock.json"
 
 ## 3. 対象コミットのCI成功を確認する
 
-[CI](../.github/workflows/ci.yml)は`main`へのpush、PR、手動実行が対象で、タグのpushでは実行されません。PRでの成功に加えて、公開対象の`main`のコミットに対するCI成功を確認してください。
+[CI](.github/workflows/ci.yml)は`main`へのpush、PR、手動実行が対象で、タグのpushでは実行されません。PRでの成功に加えて、公開対象の`main`のコミットに対するCI成功を確認してください。
 
 ```bash
 release_ci_run_id="$(gh run list --repo nimiusrd/should-run-checks \
