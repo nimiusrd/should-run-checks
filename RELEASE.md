@@ -1,36 +1,8 @@
 # リリース手順
 
-このActionは、ビルド済みの`dist/index.js`を含むGitコミットをタグで配布し、GitHub Releaseで変更内容を案内します。`package.json`は`private: true`で、npmへの公開は行いません。リリース専用のGitHub Actions workflowは置かず、タグとReleaseはCursor Automationが作成します。
+このActionは、ビルド済みの`dist/index.js`を含むGitコミットをタグで配布し、GitHub Releaseで変更内容を案内します。`package.json`は`private: true`で、npmへの公開は行いません。リリース専用のworkflowはなく、タグとReleaseは以下の手順で作成します。
 
-作業はリポジトリルートで行います。手順1でバージョンを更新したpull requestをデフォルトブランチへマージすると、Cursor Automationが手順2から手順5を実行します。手元で公開する場合も同じコマンドを使い、同じタグを二重に作りません。手順6は公開後の別のpull requestです。
-
-ローカルのnpmコマンドはDev Container内で実行します。Cursor Cloud AgentとAutomationではDev Containerを使わず、Node.js 24で同じnpmコマンドを直接実行します。GitとGitHub CLI（`gh`）はホストで実行します。タグのpushはGitの認証、Releaseの作成は`gh`の認証を使います。`gh`がReleaseを作成できない場合は、Cloud Agentのシークレット`GH_TOKEN`または`GITHUB_TOKEN`にcontentsの書き込みができるトークンを設定します。各コマンドが失敗した場合は原因を解消し、次の段階へ進みません。
-
-## Cursor Automationで公開する
-
-AutomationはCursorアカウント側の設定です。このリポジトリのファイルだけでは作成されないため、[cursor.com/automations](https://cursor.com/automations)で保存します。
-
-- 名前: Should Run Checksのリリース
-- トリガー: Pull request merged
-- 対象リポジトリ: `nimiusrd/should-run-checks`
-- Pull requestを作成するツール: 無効
-- メモリ: 無効
-
-プロンプトは次のとおりです。
-
-```text
-nimiusrd/should-run-checks で、デフォルトブランチへマージされた pull request を RELEASE.md の手順2から手順5だけ実行して公開する。手順1のバージョン更新と手順6の利用側更新はしない。コード、package.json、package-lock.json、READMEは変更しない。pull requestは開かず、別ブランチへもpushしない。既存タグは移動も削除もしない。失敗したコマンドの次へ進まない。
-
-1. マージ先がデフォルトブランチであることを確認する。違う場合、またはマージされた pull request がない場合は何も作らず終了する。
-2. トリガーが示すマージコミットの40桁 SHA を release_sha にする。短い SHA や、その後に進んだブランチ先端は使わない。手順2の origin/main から SHA を取り出すコマンドは実行しない。
-3. RELEASE.md の手順2の共有コマンドに従い、release_sha の package.json と package-lock.json の version が一致することを確認する。タグ名は v にその version を付けたものにする。不一致、または X.Y.Z でない場合は何も作らず終了する。
-4. 同じ名前のタグが別のコミットを指している場合は何も作らず終了する。v0.3.0 を付け直さない。タグが release_sha を指し、GitHub Release も既にある場合は終了する。タグが release_sha を指していて Release だけがない場合は、タグを作り直さず手順5の Release 作成だけを行う。
-5. タグがまだない場合は、RELEASE.md の手順3に従い、ci.yml の CI が release_sha へのデフォルトブランチ push として成功するまで待つ。実行が見つからない、失敗した、または headSha、status、conclusion が手順3の条件を満たさない場合は、タグも GitHub Release も作らず終了する。
-6. タグがまだない場合は、RELEASE.md の手順4に従い、release_sha へ注釈付きタグを作成してそのタグだけを push する。タグが指すコミット SHA が release_sha と一致することを確認してから先へ進む。
-7. RELEASE.md の手順5に従い、日本語のリリースノートを --verify-tag で GitHub Release として公開する。--target やブランチ名でタグを作らない。配布アセットは付けず、npm へも公開しない。
-   公開する履歴が設定ファイル方式の v0.3.0 から TypeScript と workflow 入力への移行を含む場合は、手順1に列挙されたリリースノートの項目を含める。それ以外は直前のリリースタグからの変更を書く。成功した CI の URL と release_sha を本文に含める。
-8. Release の URL と、利用側が固定する40桁のコミット SHA を結果に残す。タグオブジェクト自身の SHA は案内しない。
-```
+作業はリポジトリルートで行います。ローカルのnpmコマンドはDev Container内、GitとGitHub CLI（`gh`）の操作はホストで実行します。`gh`はリポジトリへの書き込み権限があるアカウントで認証しておきます。各コマンドが失敗した場合は原因を解消し、次の段階へ進みません。
 
 ## 1. リリース用の変更をPRにまとめる
 
@@ -59,7 +31,7 @@ npm run check
 git diff --check
 ```
 
-`--no-git-tag-version`を指定し、CIの確認前にコミットやタグを自動作成しないようにします。Automationはここでバージョンを決めません。
+`--no-git-tag-version`を指定し、CIの確認前にコミットやタグを自動作成しないようにします。
 
 バージョン更新、ソースの変更、生成した`dist/index.js`、必要なREADMEの変更をコミットし、PRのCI成功を確認して`main`へ取り込みます。ビルドで`dist/index.js`が変わった場合は、その変更も必ず含めてください。
 
@@ -73,17 +45,12 @@ git diff --check
 
 ## 2. 公開するコミットを固定する
 
-Automationは、トリガーが示すマージコミットの40桁を`release_sha`にします。手元で公開する場合は、作業ツリーに未コミットの変更がないことと、公開したいコミットが`origin/main`の先端であることを確認してから、そのSHAを保存します。
+作業ツリーに未コミットの変更がないことを`git status --short`で確認します。その後、最新の`main`とタグを取得し、公開対象のSHAを保存します。以降のコマンドは同じシェルで実行します。後から`main`が進んでも、保存した`release_sha`を使います。
 
 ```bash
 git status --short
 git fetch origin main --tags
 release_sha="$(git rev-parse refs/remotes/origin/main)"
-```
-
-以降は同じシェルで実行します。後からブランチ先端が進んでも、保存した`release_sha`だけを使います。
-
-```bash
 git fetch origin "$release_sha" --tags
 package_version="$(git show "${release_sha}:package.json" | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).version')"
 lock_version="$(git show "${release_sha}:package-lock.json" | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).version')"
@@ -171,4 +138,4 @@ gh release view "$release_tag" --repo nimiusrd/should-run-checks
 - uses: nimiusrd/should-run-checks@<40桁のコミットSHA> # v0.4.0
 ```
 
-公開したAutomationは手順6を実行しません。移行版の初回リリースでは、READMEの利用例にあるSHAのプレースホルダーも公開済みの値へ置き換え、別のPRで更新します。公開後に不具合が見つかった場合は、修正コミットのCIを確認して新しいバージョンを公開してください。利用側を戻す場合は、直前の動作確認済みSHAへ戻し、過去のタグは付け直しません。
+移行版の初回リリースでは、READMEの利用例にあるSHAのプレースホルダーも公開済みの値へ置き換え、別のPRで更新します。公開後に不具合が見つかった場合は、修正コミットのCIを確認して新しいバージョンを公開してください。利用側を戻す場合は、直前の動作確認済みSHAへ戻し、過去のタグは付け直しません。

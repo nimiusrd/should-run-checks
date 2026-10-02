@@ -100,8 +100,8 @@ DockerとDev Container CLIを利用できる状態にして、Dockerを起動し
 
 ## リリース
 
-バージョン更新はpull requestで`main`へ入れます。マージ後はCursor Automationが、CIの成功を確認したそのコミットにタグとGitHub Releaseを作成します。利用側はタグが指す40桁のコミットSHAに固定してください。
+バージョン更新と提出前チェックを済ませ、`main`の対象コミットでCIが成功したことを確認してからタグとGitHub Releaseを作成します。利用側はタグが指す40桁のコミットSHAに固定してください。
 
-具体的なコマンド、Automationのプロンプト、リリースノートに含める内容、公開後の確認は[リリース手順](RELEASE.md)にまとめています。
+具体的なコマンド、リリースノートに含める内容、公開後の確認は[リリース手順](RELEASE.md)にまとめています。
 
 [MIT License](LICENSE)
