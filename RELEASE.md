@@ -2,11 +2,13 @@
 
 このActionは、ビルド済みの`dist/index.js`を含むGitコミットをタグで配布し、GitHub Releaseで変更内容を案内します。`package.json`は`private: true`で、npmへの公開は行いません。リリース専用のworkflowはなく、タグとReleaseは以下の手順で作成します。
 
-作業はリポジトリルートで行います。ローカルのnpmコマンドはDev Container内、GitとGitHub CLI（`gh`）の操作はホストで実行してください。`gh`はリポジトリへの書き込み権限があるアカウントで認証しておきます。各コマンドが失敗した場合は原因を解消し、次の段階へ進まないでください。
+作業はリポジトリルートで行います。ローカルのnpmコマンドはDev Container内、GitとGitHub CLI（`gh`）の操作はホストで実行します。`gh`はリポジトリへの書き込み権限があるアカウントで認証しておきます。各コマンドが失敗した場合は原因を解消し、次の段階へ進みません。
 
 ## 1. リリース用の変更をPRにまとめる
 
 次のバージョンを決め、`package.json`と`package-lock.json`を同時に更新します。以下の`0.4.0`は例です。タグ名はパッケージのバージョンに`v`を付けます。
+
+ローカルではDev Containerで実行します。
 
 ```bash
 devcontainer up --workspace-folder .
@@ -18,7 +20,18 @@ devcontainer exec --workspace-folder . npm run check
 git diff --check
 ```
 
-`--no-git-tag-version`を指定し、CIの確認前にコミットやタグを自動作成しないようにします。Cursor Cloud AgentではNode.js 24環境で同じnpmコマンドを直接実行します。
+Cursor Cloud AgentではDev Containerを使わず、同じnpmコマンドを直接実行します。
+
+```bash
+npm version 0.4.0 --no-git-tag-version
+npm ci
+npm run build
+npm test
+npm run check
+git diff --check
+```
+
+`--no-git-tag-version`を指定し、CIの確認前にコミットやタグを自動作成しないようにします。
 
 バージョン更新、ソースの変更、生成した`dist/index.js`、必要なREADMEの変更をコミットし、PRのCI成功を確認して`main`へ取り込みます。ビルドで`dist/index.js`が変わった場合は、その変更も必ず含めてください。
 
@@ -32,23 +45,43 @@ git diff --check
 
 ## 2. 公開するコミットを固定する
 
-作業ツリーに未コミットの変更がないことを`git status --short`で確認します。その後、最新の`main`とタグを取得し、公開対象のSHAを保存します。以降のコマンドは同じシェルで実行します。
+作業ツリーに未コミットの変更がないことを`git status --short`で確認します。その後、最新の`main`とタグを取得し、公開対象のSHAを保存します。以降のコマンドは同じシェルで実行します。後から`main`が進んでも、保存した`release_sha`を使います。
 
 ```bash
 git status --short
 git fetch origin main --tags
-release_tag=v0.4.0
 release_sha="$(git rev-parse refs/remotes/origin/main)"
+git fetch origin "$release_sha" --tags
+package_version="$(git show "${release_sha}:package.json" | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).version')"
+lock_version="$(git show "${release_sha}:package-lock.json" | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).version')"
+test "$package_version" = "$lock_version"
+printf '%s\n' "$package_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'
+release_tag="v${package_version}"
 git show --no-patch --format=fuller "$release_sha"
 git show "${release_sha}:package.json"
 git show "${release_sha}:package-lock.json"
 ```
 
-`release_tag`を今回のバージョンに置き換え、対象コミットに意図した変更が含まれることと、両ファイルのバージョンがタグ名と一致することを確認します。後から`main`が進んでも、ここで保存した`release_sha`を使います。
+対象コミットに意図した変更が含まれることを確認します。両ファイルの`version`が一致しない、または`X.Y.Z`でない場合は終了します。
+
+同名タグが別のコミットを指している場合は、タグを残したまま終了します。そのコミットを公開するには、手順1で新しいバージョンをマージします。
+
+```bash
+git tag --list "$release_tag"
+git ls-remote --tags origin "refs/tags/${release_tag}" "refs/tags/${release_tag}^{}"
+existing_sha="$(
+  git ls-remote --tags origin "refs/tags/${release_tag}" "refs/tags/${release_tag}^{}" |
+    awk '/\^\{\}$/ { peeled=$1 } !/\^\{\}$/ { direct=$1 } END { if (peeled != "") print peeled; else print direct }'
+)"
+if [ -n "$existing_sha" ] && [ "$existing_sha" != "$release_sha" ]; then
+  echo "タグ ${release_tag} は ${existing_sha} を指しています"
+  exit 0
+fi
+```
 
 ## 3. 対象コミットのCI成功を確認する
 
-[CI](.github/workflows/ci.yml)は`main`へのpush、PR、手動実行が対象で、タグのpushでは実行されません。PRでの成功に加えて、公開対象の`main`のコミットに対するCI成功を確認してください。
+手順2で終了しなかった場合に確認します。[CI](.github/workflows/ci.yml)は`main`へのpush、PR、手動実行が対象で、タグのpushでは実行されません。PRでの成功に加えて、公開対象の`main`のコミットに対するCI成功を確認します。
 
 ```bash
 release_ci_run_id="$(gh run list --repo nimiusrd/should-run-checks \
@@ -66,29 +99,29 @@ CIでは、Node.jsのセットアップ前に同梱Actionを実行し、出力�
 
 ## 4. 確認したSHAにタグを付ける
 
-次のコマンドの出力が両方とも空で、同名のタグがローカルにもリモートにもないことを確認します。既存タグは移動・上書きせず、すでに存在する場合は指すコミットと公開状況を確認してください。
+既存タグは移動、上書き、削除をしません。手順2で`existing_sha`が空のときだけ、CIが成功したSHAを明示して注釈付きタグを作成し、そのタグだけをpushします。`release_sha`を指すタグが既にある場合は、この作成を飛ばして手順5へ進みます。
 
 ```bash
-git tag --list "$release_tag"
-git ls-remote --tags origin "refs/tags/${release_tag}" "refs/tags/${release_tag}^{}"
-```
-
-CIが成功したSHAを明示して注釈付きタグを作成し、そのタグだけをpushします。
-
-```bash
-git tag -a "$release_tag" "$release_sha" -m "$release_tag"
-git push origin "refs/tags/${release_tag}"
+if [ -z "$existing_sha" ]; then
+  git tag -a "$release_tag" "$release_sha" -m "$release_tag"
+  git push origin "refs/tags/${release_tag}"
+fi
 git rev-parse "${release_tag}^{commit}"
-git ls-remote --tags origin "refs/tags/${release_tag}^{}"
+git ls-remote --tags origin "refs/tags/${release_tag}" "refs/tags/${release_tag}^{}" |
+  awk '/\^\{\}$/ { peeled=$1 } !/\^\{\}$/ { direct=$1 } END { if (peeled != "") print peeled; else print direct }'
 ```
 
 最後の2つの出力に含まれるコミットSHAが、両方とも`release_sha`と一致することを確認します。注釈付きタグ自身のSHAではなく、`^{commit}`で取得したコミットSHAを利用側へ案内します。
 
 ## 5. GitHub Releaseを公開する
 
-変更内容、互換性を壊す変更、移行方法、`release_sha`を日本語のリリースノートに記載し、ホスト上のMarkdownファイルへ保存します。`release_notes_file`には、そのファイルのパスを指定してください。
+変更内容、互換性を壊す変更、移行方法、成功したCIのURL、`release_sha`を日本語のリリースノートに記載し、ホスト上のMarkdownファイルへ保存します。`release_notes_file`には、そのファイルのパスを指定してください。
 
 ```bash
+if gh release view "$release_tag" --repo nimiusrd/should-run-checks >/dev/null 2>&1; then
+  gh release view "$release_tag" --repo nimiusrd/should-run-checks
+  exit 0
+fi
 release_notes_file=/tmp/should-run-checks-release-notes.md
 gh release create "$release_tag" --repo nimiusrd/should-run-checks \
   --verify-tag --title "$release_tag" --notes-file "$release_notes_file"
