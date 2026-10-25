@@ -1,7 +1,7 @@
 # Should Run Checks
 
 変更されたファイルとworkflowの`with`に指定したスキップルールを照合し、CIのチェックを実行する必要があるか判定します。
-TypeScriptで実装し、コンパイル済みJavaScriptを同梱するNode.js 24 Actionです。実行時の外部パッケージや設定ファイル用パーサはありません。
+TypeScriptで実装し、コンパイル済みJavaScriptを同梱するNode.js 24 Actionです。開発とCIは、侵害されたeMudhra中間CAを拒否するNode.js 24.22.1以上、25未満を使います。実行時の外部パッケージや設定ファイル用パーサはありません。
 
 ## 使い方
 
@@ -52,7 +52,7 @@ jobs:
 
 拡張子は`.`から始め、ディレクトリとファイルはリポジトリルートからの相対パスを`/`区切りで指定します。大文字小文字を区別します。`./`・末尾の`/`・globは使いません。
 
-呼び出し元でPython・Node.jsのセットアップや`npm install`は不要です。GitHub Actionsが用意するNode.js 24で同梱の`dist/index.js`を実行し、呼び出し元のPATHは変更しません。Gitと比較対象の履歴が必要です。
+呼び出し元でPython・Node.jsのセットアップや`npm install`は不要です。GitHub ActionsのNode.js 24で同梱の`dist/index.js`を実行し、呼び出し元のPATHは変更しません。このランタイムは、eMudhra中間CAを拒否する24.22.1以上である必要があります。Gitと比較対象の履歴が必要です。
 
 ## 判定
 
@@ -76,7 +76,7 @@ jobs:
 
 ## 開発
 
-Node.js 24とGitを使います。開発依存はTypeScriptコンパイラとNode.jsの型定義だけで、`package-lock.json`で固定します。テストはNode.js標準のテストランナーを使います。
+Node.js 24.22.1以上、25未満とGitを使います。開発依存はTypeScriptコンパイラとNode.jsの型定義だけで、`package-lock.json`で固定します。テストはNode.js標準のテストランナーを使います。
 
 ```bash
 devcontainer up --workspace-folder .

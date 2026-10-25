@@ -6,6 +6,12 @@ const { join, resolve } = require('node:path');
 const { test } = require('node:test');
 const { evaluateChanges, readInputs, shouldRunChecks } = require('../dist/index.js');
 
+test('Node.jsはeMudhra中間CAを拒否する24.22.1以上、25未満である', () => {
+  const [major, minor, patch] = process.versions.node.split('.').map(Number);
+  const supported = major === 24 && (minor > 22 || (minor === 22 && patch >= 1));
+  assert.equal(supported, true, process.version);
+});
+
 const INPUTS = {
   'INPUT_SKIP-EXTENSIONS': '.md',
   'INPUT_SKIP-DIRECTORIES': 'mockups',

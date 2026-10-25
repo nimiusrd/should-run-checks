@@ -5,7 +5,7 @@
   "description": "変更パスとworkflow入力からCIの実行要否を判定するGitHub Action",
   "license": "MIT",
   "engines": {
-    "node": ">=24"
+    "node": ">=24.22.1 <25"
   },
   "scripts": {
     "build": "tsc",
