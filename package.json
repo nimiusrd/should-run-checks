@@ -1,6 +1,6 @@
 {
   "name": "should-run-checks",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "変更パスとworkflow入力からCIの実行要否を判定するGitHub Action",
   "license": "MIT",
