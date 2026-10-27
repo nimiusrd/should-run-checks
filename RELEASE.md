@@ -95,7 +95,7 @@ gh run view "$release_ci_run_id" --repo nimiusrd/should-run-checks \
 
 実行が見つからない場合や失敗した場合はタグを作成しません。最後の出力が`headSha = release_sha`、`status = completed`、`conclusion = success`であることを確認します。
 
-CIでは、Node.jsのセットアップ前に同梱Actionを実行し、出力とPATHの不変を確認します。その後、Node.js 24.22.1で`npm ci`、ビルド、再ビルドによる`dist/index.js`の差分なし、テスト、型・構文チェック、`git diff --check`を検証します。
+CIでは、Node.jsのセットアップ前に同梱Actionを実行し、出力とPATHの不変を確認します。その後、Node.js 26.12.1で`npm ci`、ビルド、再ビルドによる`dist/index.js`の差分なし、テスト、型・構文チェック、`git diff --check`を検証します。
 
 ## 4. 確認したSHAにタグを付ける
 

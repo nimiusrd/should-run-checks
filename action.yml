@@ -23,6 +23,7 @@ outputs:
   reason:
     description: 判定理由（changed-files、skip-only、no-changes、initial-push、unsupported-event、error）
 runs:
-  # ランナー同梱のNode.js 24で実行する。eMudhra中間CAを拒否する24.22.1以上が必要。
+  # JavaScript Actionの実行ランタイムはnode24まで。eMudhra対応にはランナー同梱の24.22.1以上が必要。
+  # 開発とCIはNode.js 26.12.1を使う。
   using: node24
   main: dist/index.js
